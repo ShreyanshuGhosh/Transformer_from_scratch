@@ -20,8 +20,8 @@ from pathlib import Path
 
 
 def greedy_decode(model, source, source_mask, tokenizer_src, tokenizer_tgt, max_len, device):
-    sos_idx = tokenizer_tgt.token_to_id('[SOS]')
-    eos_idx = tokenizer_tgt.token_to_id('[EOS]')
+    sos_idx = tokenizer_tgt.token_to_id('<s>')
+    eos_idx = tokenizer_tgt.token_to_id('</s>')
 
     # Precompute the encoder output and reuse it for every step
     encoder_output = model.encode(source, source_mask)
@@ -50,7 +50,7 @@ def greedy_decode(model, source, source_mask, tokenizer_src, tokenizer_tgt, max_
     return decoder_input.squeeze(0)
 
 
-def run_validation(model, validation_ds, tokenizer_src, tokenizer_tgt, max_len, device, print_msg, global_step, writer, num_examples=2):
+def run_validation(model, validation_ds, tokenizer_src, tokenizer_tgt, max_len, device, print_msg, num_examples=2):
     model.eval()
     count = 0
 
@@ -94,24 +94,6 @@ def run_validation(model, validation_ds, tokenizer_src, tokenizer_tgt, max_len, 
                 print_msg('-'*console_width)
                 break
     
-
-def get_all_sentences(ds, lang):
-    for item in ds:
-        yield item['translation'][lang]
-
-def get_or_build_tokenizer(config, ds, lang):
-    tokenizer_path = Path(config['tokenizer_file'].format(lang))
-    if not Path.exists(tokenizer_path):
-        # Most code taken from: https://huggingface.co/docs/tokenizers/quicktour
-        tokenizer = Tokenizer(WordLevel(unk_token="[UNK]"))
-        tokenizer.pre_tokenizer = Whitespace()
-        trainer = WordLevelTrainer(special_tokens=["[UNK]", "[PAD]", "[SOS]", "[EOS]"], min_frequency=2)
-        tokenizer.train_from_iterator(get_all_sentences(ds, lang), trainer=trainer)
-        tokenizer.save(str(tokenizer_path))
-    else:
-        tokenizer = Tokenizer.from_file(str(tokenizer_path))
-    return tokenizer
-
 
 def get_all_sentences(ds,lang):
     for item in ds:
@@ -162,7 +144,8 @@ def get_ds(config):
 
 
     train_dataloader = DataLoader(train_ds, batch_size = config['batch_size'], shuffle = True)
-    val_dataloader = DataLoader(val_ds, batch_size = config['batch_size'], shuffle = True)
+    # greedy_decode handles one sentence at a time, so validation uses batch size 1
+    val_dataloader = DataLoader(val_ds, batch_size = 1, shuffle = True)
 
     return train_dataloader, val_dataloader, tokenizer_src, tokenizer_tgt
     
@@ -249,7 +232,7 @@ def train_model(config):
 
             global_step += 1
              
-        run_validation(model, val_dataloader, tokenizer_src, tokenizer_tgt, config['seq_len'], device, lambda msg:batch_iterator.write(msg), writer, global_step)
+        run_validation(model, val_dataloader, tokenizer_src, tokenizer_tgt, config['seq_len'], device, lambda msg: batch_iterator.write(msg))
         # Save the model at the end of every epoch
         model_filename = get_weights_file_path(config, f"{epoch:02d}")
         torch.save({
