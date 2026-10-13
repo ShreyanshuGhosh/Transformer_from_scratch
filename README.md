@@ -1,6 +1,5 @@
 # Transformer from scratch
 
-My implementation of the Transformer from the "Attention Is All You Need" paper, written in PyTorch without using `nn.Transformer` or any prebuilt attention layers. I built it to actually understand how the architecture works instead of just calling a library.
 
 The model is trained to translate English to Italian using the opus_books dataset from Hugging Face.
 
@@ -72,7 +71,3 @@ Defaults I used (in `config.py` and `build_transformer()`):
 - Label smoothing of 0.1 in the loss, and padding tokens are ignored
 - Greedy decoding instead of beam search
 
-## Resources that helped
-
-- The original paper
-- The Annotated Transformer: https://nlp.seas.harvard.edu/annotated-transformer/
